@@ -2,6 +2,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from database import db
+from mysocket import sio
 
 
 def v(arr):
@@ -15,7 +16,8 @@ def parse_html(html):
         script.decompose()
 
     text = soup.get_text("\r\n")
-    phone_number_regex = re.compile(r"\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}")
+    phone_number_regex = re.compile(
+        r"(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}")  
     phone_numbers = re.findall(phone_number_regex, text)
 
     for link in soup.find_all("a"):
@@ -51,7 +53,7 @@ def main():
             {"result.website": {'$exists': True}},
             {'result.website': 1, '_id': 0}
         ).skip(n * page_size).limit(page_size)
-
+        sio.emit('message', {'message': n})
         website_urls = [r['result']['website'] for r in result]
         if not website_urls:
             break
@@ -63,8 +65,12 @@ def main():
                 "email_addresses": email_addresses,
                 "phone_numbers": phone_numbers
             })
+            sio.emit('message', {'message': f'{website_url}'})
+            sio.emit('message', {'message': f's:{len(social_links)} e:{len(email_addresses)} p:{len(phone_numbers)}'})
         n += 1
 
 
 if __name__ == "__main__":
+    sio.connect('http://localhost:9000')
     main()
+
