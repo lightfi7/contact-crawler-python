@@ -17,7 +17,7 @@ def parse_html(html):
 
     text = soup.get_text("\r\n")
     phone_number_regex = re.compile(
-        r"(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}")  
+        r"(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?\d{3}[-.\s]?\d{4}")
     phone_numbers = re.findall(phone_number_regex, text)
 
     for link in soup.find_all("a"):
@@ -38,7 +38,7 @@ def parse_html(html):
 
 def scrape_webpage(website_url):
     try:
-        response = requests.get(website_url)
+        response = requests.get(website_url, timeout=10)
         return parse_html(response.text)
     except:
         return [], [], []
@@ -65,6 +65,16 @@ def main():
                 "email_addresses": email_addresses,
                 "phone_numbers": phone_numbers
             })
+            if (len(email_addresses) + len(phone_numbers) + len(social_links)) == 0:
+                db['websites'].update_one({'url': website_url}, {'$set': {'url': website_url}}, True)
+            db['contacts'].update_one({'url': website_url}, {'$set': {
+                'url': website_url,
+                'result': {
+                    "social_links": social_links,
+                    "email_addresses": email_addresses,
+                    "phone_numbers": phone_numbers
+                }
+            }}, True)
             sio.emit('message', {'message': f'{website_url}'})
             sio.emit('message', {'message': f's:{len(social_links)} e:{len(email_addresses)} p:{len(phone_numbers)}'})
         n += 1
@@ -73,4 +83,3 @@ def main():
 if __name__ == "__main__":
     sio.connect('http://localhost:9000')
     main()
-
