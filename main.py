@@ -47,7 +47,8 @@ def scrape_webpage(website_url):
 def main():
     page_size = 1000
     n = 0
-
+    nn = db['gmaps'].count_documents({"result.website": {'$exists': True}})
+    count = 0
     while True:
         result = db['gmaps'].find(
             {"result.website": {'$exists': True}},
@@ -75,8 +76,10 @@ def main():
                     "phone_numbers": phone_numbers
                 }
             }}, True)
+            count += 1
             sio.emit('message', {'message': f'{website_url}'})
-            sio.emit('message', {'message': f's:{len(social_links)} e:{len(email_addresses)} p:{len(phone_numbers)}'})
+            sio.emit('message', {'message': f'E:{len(email_addresses)} P:{len(phone_numbers)} S:{len(social_links)}'})
+            sio.emit('message', {'message': f'{count}/{nn}'})
         n += 1
 
 
