@@ -2,7 +2,6 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from database import db
-from mysocket import sio
 
 
 def v(arr):
@@ -54,18 +53,13 @@ def main():
             {"result.website": {'$exists': True}},
             {'result.website': 1, '_id': 0}
         ).skip(n * page_size).limit(page_size)
-        sio.emit('message', {'message': n})
         website_urls = [r['result']['website'] for r in result]
         if not website_urls:
             break
 
         for website_url in website_urls:
             email_addresses, phone_numbers, social_links = scrape_webpage(website_url)
-            print({
-                "social_links": social_links,
-                "email_addresses": email_addresses,
-                "phone_numbers": phone_numbers
-            })
+
             if (len(email_addresses) + len(phone_numbers) + len(social_links)) == 0:
                 db['websites'].update_one({'url': website_url}, {'$set': {'url': website_url}}, True)
             db['contacts'].update_one({'url': website_url}, {'$set': {
@@ -77,12 +71,13 @@ def main():
                 }
             }}, True)
             count += 1
-            sio.emit('message', {'message': f'{website_url}'})
-            sio.emit('message', {'message': f'E:{len(email_addresses)} P:{len(phone_numbers)} S:{len(social_links)}'})
-            sio.emit('message', {'message': f'{count}/{nn}'})
+
+            print(website_url)
+            print(f'E:{len(email_addresses)} P:{len(phone_numbers)} S:{len(social_links)}')
+            print(f'{count}/{nn}')
         n += 1
+    print(f';) ${count}')
 
 
 if __name__ == "__main__":
-    sio.connect('http://localhost:9000')
     main()
